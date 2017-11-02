@@ -4,7 +4,7 @@ bee
 
 Bee is a command-line tool facilitating development of Beego-based application.
 
-[![Build Status](https://drone.io/github.com/beego/bee/status.png)](https://drone.io/github.com/beego/bee/latest)
+[![Build Status](https://drone.io/bee/status.png)](https://drone.io/bee/latest)
 
 ## Requirements
 

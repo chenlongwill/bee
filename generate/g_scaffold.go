@@ -3,9 +3,9 @@ package generate
 import (
 	"strings"
 
-	"github.com/beego/bee/cmd/commands/migrate"
-	beeLogger "github.com/beego/bee/logger"
-	"github.com/beego/bee/utils"
+	"bee/cmd/commands/migrate"
+	beeLogger "bee/logger"
+	"bee/utils"
 )
 
 func GenerateScaffold(sname, fields, currpath, driver, conn string) {

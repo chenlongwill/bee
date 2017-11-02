@@ -21,9 +21,9 @@ import (
 	"path"
 	"strings"
 
-	beeLogger "github.com/beego/bee/logger"
-	"github.com/beego/bee/logger/colors"
-	"github.com/beego/bee/utils"
+	beeLogger "bee/logger"
+	"bee/logger/colors"
+	"bee/utils"
 )
 
 func GenerateModel(mname, fields, currpath string) {
@@ -60,7 +60,8 @@ func GenerateModel(mname, fields, currpath string) {
 		content = strings.Replace(content, "{{modelName}}", modelName, -1)
 		content = strings.Replace(content, "{{modelStruct}}", modelStruct, -1)
 		if hastime {
-			content = strings.Replace(content, "{{timePkg}}", `"time"`, -1)
+			// content = strings.Replace(content, "{{timePkg}}", `"time"`, -1)
+			content = strings.Replace(content, "{{timePkg}}", "", -1)
 		} else {
 			content = strings.Replace(content, "{{timePkg}}", "", -1)
 		}
@@ -122,7 +123,7 @@ func getType(ktype string) (kt, tag string, hasTime bool) {
 	case "pk":
 		return "int64", "`orm:\"pk\"`", false
 	case "datetime":
-		return "time.Time", "`orm:\"type(datetime)\"`", true
+		return "string", "`orm:\"size(20)\"`", false
 	case "int", "int8", "int16", "int32", "int64":
 		fallthrough
 	case "uint", "uint8", "uint16", "uint32", "uint64":
@@ -167,7 +168,7 @@ func Add{{modelName}}(m *{{modelName}}) (id int64, err error) {
 func Get{{modelName}}ById(id int64) (v *{{modelName}}, err error) {
 	o := orm.NewOrm()
 	v = &{{modelName}}{Id: id}
-	if err = o.QueryTable(new({{modelName}})).Filter("Id", id).RelatedSel().One(v); err == nil {
+	if err = o.Read(v); err == nil {
 		return v, nil
 	}
 	return nil, err
@@ -176,7 +177,7 @@ func Get{{modelName}}ById(id int64) (v *{{modelName}}, err error) {
 // GetAll{{modelName}} retrieves all {{modelName}} matches certain condition. Returns empty list if
 // no records exist
 func GetAll{{modelName}}(query map[string]string, fields []string, sortby []string, order []string,
-	offset int64, limit int64) (ml []interface{}, err error) {
+	offset int64, limit int64) (ml []interface{}, num int64, err error) {
 	o := orm.NewOrm()
 	qs := o.QueryTable(new({{modelName}}))
 	// query k=v
@@ -197,7 +198,7 @@ func GetAll{{modelName}}(query map[string]string, fields []string, sortby []stri
 				} else if order[i] == "asc" {
 					orderby = v
 				} else {
-					return nil, errors.New("Error: Invalid order. Must be either [asc|desc]")
+					return nil, 0, errors.New("Error: Invalid order. Must be either [asc|desc]")
 				}
 				sortFields = append(sortFields, orderby)
 			}
@@ -211,21 +212,25 @@ func GetAll{{modelName}}(query map[string]string, fields []string, sortby []stri
 				} else if order[0] == "asc" {
 					orderby = v
 				} else {
-					return nil, errors.New("Error: Invalid order. Must be either [asc|desc]")
+					return nil, 0, errors.New("Error: Invalid order. Must be either [asc|desc]")
 				}
 				sortFields = append(sortFields, orderby)
 			}
 		} else if len(sortby) != len(order) && len(order) != 1 {
-			return nil, errors.New("Error: 'sortby', 'order' sizes mismatch or 'order' size is not 1")
+			return nil, 0, errors.New("Error: 'sortby', 'order' sizes mismatch or 'order' size is not 1")
 		}
 	} else {
 		if len(order) != 0 {
-			return nil, errors.New("Error: unused 'order' fields")
+			return nil, 0, errors.New("Error: unused 'order' fields")
 		}
 	}
 
 	var l []{{modelName}}
-	qs = qs.OrderBy(sortFields...).RelatedSel()
+	qs = qs.OrderBy(sortFields...)
+	num, err = qs.Count()
+	if err != nil {
+		return nil, 0, err
+	}
 	if _, err = qs.Limit(limit, offset).All(&l, fields...); err == nil {
 		if len(fields) == 0 {
 			for _, v := range l {
@@ -242,9 +247,9 @@ func GetAll{{modelName}}(query map[string]string, fields []string, sortby []stri
 				ml = append(ml, m)
 			}
 		}
-		return ml, nil
+		return ml, num, nil
 	}
-	return nil, err
+	return nil, 0, err
 }
 
 // Update{{modelName}} updates {{modelName}} by Id and returns error if

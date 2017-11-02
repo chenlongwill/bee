@@ -23,9 +23,9 @@ import (
 	"regexp"
 	"strings"
 
-	beeLogger "github.com/beego/bee/logger"
-	"github.com/beego/bee/logger/colors"
-	"github.com/beego/bee/utils"
+	beeLogger "bee/logger"
+	"bee/logger/colors"
+	"bee/utils"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
 )
@@ -92,36 +92,45 @@ var typeMappingMysql = map[string]string{
 	"tinyblob":           "string",
 	"mediumblob":         "string",
 	"longblob":           "string",
-	"date":               "time.Time", // time
-	"datetime":           "time.Time",
-	"timestamp":          "time.Time",
-	"time":               "time.Time",
-	"float":              "float32", // float & decimal
-	"double":             "float64",
-	"decimal":            "float64",
-	"binary":             "string", // binary
-	"varbinary":          "string",
-	"year":               "int16",
+	// "date":               "time.Time", // time
+	// "datetime":           "time.Time",
+	// "timestamp":          "time.Time",
+	// "time":               "time.Time",
+	"date":      "string", // time
+	"datetime":  "string",
+	"timestamp": "string",
+	"time":      "string",
+	"float":     "float32", // float & decimal
+	"double":    "float64",
+	"decimal":   "float64",
+	"binary":    "string", // binary
+	"varbinary": "string",
+	"year":      "int16",
 }
 
 // typeMappingPostgres maps SQL data type to corresponding Go data type
 var typeMappingPostgres = map[string]string{
-	"serial":                      "int", // serial
-	"big serial":                  "int64",
-	"smallint":                    "int16", // int
-	"integer":                     "int",
-	"bigint":                      "int64",
-	"boolean":                     "bool",   // bool
-	"char":                        "string", // string
-	"character":                   "string",
-	"character varying":           "string",
-	"varchar":                     "string",
-	"text":                        "string",
-	"date":                        "time.Time", // time
-	"time":                        "time.Time",
-	"timestamp":                   "time.Time",
-	"timestamp without time zone": "time.Time",
-	"timestamp with time zone":    "time.Time",
+	"serial":            "int", // serial
+	"big serial":        "int64",
+	"smallint":          "int16", // int
+	"integer":           "int",
+	"bigint":            "int64",
+	"boolean":           "bool",   // bool
+	"char":              "string", // string
+	"character":         "string",
+	"character varying": "string",
+	"varchar":           "string",
+	"text":              "string",
+	// "date":                        "time.Time", // time
+	// "time":                        "time.Time",
+	// "timestamp":                   "time.Time",
+	// "timestamp without time zone": "time.Time",
+	// "timestamp with time zone":    "time.Time",
+	"date":                        "string", // time
+	"time":                        "string",
+	"timestamp":                   "string",
+	"timestamp without time zone": "string",
+	"timestamp with time zone":    "string",
 	"interval":                    "string",  // time interval, string for now
 	"real":                        "float32", // float & decimal
 	"double precision":            "float64",
@@ -791,8 +800,8 @@ func writeModelFiles(tables []*Table, mPath string, selectedTables map[string]bo
 		timePkg := ""
 		importTimePkg := ""
 		if tb.ImportTimePkg {
-			timePkg = "\"time\"\n"
-			importTimePkg = "import \"time\"\n"
+			// timePkg = "\"time\"\n"
+			// importTimePkg = "import \"time\"\n"
 		}
 		fileStr = strings.Replace(fileStr, "{{timePkg}}", timePkg, -1)
 		fileStr = strings.Replace(fileStr, "{{importTimePkg}}", importTimePkg, -1)
@@ -1045,7 +1054,7 @@ func Get{{modelName}}ById(id int) (v *{{modelName}}, err error) {
 // GetAll{{modelName}} retrieves all {{modelName}} matches certain condition. Returns empty list if
 // no records exist
 func GetAll{{modelName}}(query map[string]string, fields []string, sortby []string, order []string,
-	offset int64, limit int64) (ml []interface{}, err error) {
+	offset int64, limit int64) (ml []interface{}, num int64, err error) {
 	o := orm.NewOrm()
 	qs := o.QueryTable(new({{modelName}}))
 	// query k=v
@@ -1070,7 +1079,7 @@ func GetAll{{modelName}}(query map[string]string, fields []string, sortby []stri
 				} else if order[i] == "asc" {
 					orderby = v
 				} else {
-					return nil, errors.New("Error: Invalid order. Must be either [asc|desc]")
+					return nil, 0, errors.New("Error: Invalid order. Must be either [asc|desc]")
 				}
 				sortFields = append(sortFields, orderby)
 			}
@@ -1084,21 +1093,25 @@ func GetAll{{modelName}}(query map[string]string, fields []string, sortby []stri
 				} else if order[0] == "asc" {
 					orderby = v
 				} else {
-					return nil, errors.New("Error: Invalid order. Must be either [asc|desc]")
+					return nil, 0, errors.New("Error: Invalid order. Must be either [asc|desc]")
 				}
 				sortFields = append(sortFields, orderby)
 			}
 		} else if len(sortby) != len(order) && len(order) != 1 {
-			return nil, errors.New("Error: 'sortby', 'order' sizes mismatch or 'order' size is not 1")
+			return nil, 0, errors.New("Error: 'sortby', 'order' sizes mismatch or 'order' size is not 1")
 		}
 	} else {
 		if len(order) != 0 {
-			return nil, errors.New("Error: unused 'order' fields")
+			return nil, 0, errors.New("Error: unused 'order' fields")
 		}
 	}
 
 	var l []{{modelName}}
 	qs = qs.OrderBy(sortFields...)
+	num, err = qs.Count()
+	if err != nil {
+		return nil, 0, err
+	}
 	if _, err = qs.Limit(limit, offset).All(&l, fields...); err == nil {
 		if len(fields) == 0 {
 			for _, v := range l {
@@ -1115,9 +1128,9 @@ func GetAll{{modelName}}(query map[string]string, fields []string, sortby []stri
 				ml = append(ml, m)
 			}
 		}
-		return ml, nil
+		return ml, num, nil
 	}
-	return nil, err
+	return nil, 0, err
 }
 
 // Update{{modelName}} updates {{modelName}} by Id and returns error if
@@ -1153,173 +1166,183 @@ func Delete{{modelName}}(id int) (err error) {
 	CtrlTPL = `package controllers
 
 import (
-	"{{pkgPath}}/models"
 	"encoding/json"
-	"errors"
-	"strconv"
-	"strings"
 
-	"github.com/astaxie/beego"
+	"github.com/astaxie/beego/logs"
+
+	"{{pkgPath}}/lib"
+	"{{pkgPath}}/models"
 )
 
-// {{ctrlName}}Controller operations for {{ctrlName}}
+// 后台管理API接口专用
 type {{ctrlName}}Controller struct {
-	beego.Controller
+	SysOnlineAuthController
 }
 
-// URLMapping ...
-func (c *{{ctrlName}}Controller) URLMapping() {
-	c.Mapping("Post", c.Post)
-	c.Mapping("GetOne", c.GetOne)
-	c.Mapping("GetAll", c.GetAll)
-	c.Mapping("Put", c.Put)
-	c.Mapping("Delete", c.Delete)
+type DocAdd{{ctrlName}}Request struct {
+	Code int
+	Msg  string
+	Data models.{{ctrlName}}
 }
 
-// Post ...
-// @Title Post
-// @Description create {{ctrlName}}
-// @Param	body		body 	models.{{ctrlName}}	true		"body for {{ctrlName}} content"
-// @Success 201 {int} models.{{ctrlName}}
-// @Failure 403 body is empty
-// @router / [post]
-func (c *{{ctrlName}}Controller) Post() {
-	var v models.{{ctrlName}}
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &v); err == nil {
-		if _, err := models.Add{{ctrlName}}(&v); err == nil {
-			c.Ctx.Output.SetStatus(201)
-			c.Data["json"] = v
-		} else {
-			c.Data["json"] = err.Error()
-		}
-	} else {
-		c.Data["json"] = err.Error()
-	}
-	c.ServeJSON()
-}
-
-// GetOne ...
-// @Title Get One
-// @Description get {{ctrlName}} by id
-// @Param	id		path 	string	true		"The key for staticblock"
-// @Success 200 {object} models.{{ctrlName}}
-// @Failure 403 :id is empty
-// @router /:id [get]
-func (c *{{ctrlName}}Controller) GetOne() {
-	idStr := c.Ctx.Input.Param(":id")
-	id, _ := strconv.Atoi(idStr)
-	v, err := models.Get{{ctrlName}}ById(id)
-	if err != nil {
-		c.Data["json"] = err.Error()
-	} else {
-		c.Data["json"] = v
-	}
-	c.ServeJSON()
-}
-
-// GetAll ...
-// @Title Get All
-// @Description get {{ctrlName}}
-// @Param	query	query	string	false	"Filter. e.g. col1:v1,col2:v2 ..."
-// @Param	fields	query	string	false	"Fields returned. e.g. col1,col2 ..."
-// @Param	sortby	query	string	false	"Sorted-by fields. e.g. col1,col2 ..."
-// @Param	order	query	string	false	"Order corresponding to each sortby field, if single value, apply to all sortby fields. e.g. desc,asc ..."
-// @Param	limit	query	string	false	"Limit the size of result set. Must be an integer"
-// @Param	offset	query	string	false	"Start position of result set. Must be an integer"
-// @Success 200 {object} models.{{ctrlName}}
+// Add{{ctrlName}} ...
+// @Title Add{{ctrlName}}
+// @Description get 添加{{ctrlName}}
+// @Param	body	body	controllers.DocAdd{{ctrlName}}Request	true		"json格式添加请求参数"
+// @Success 200 {object} controllers.DocResponse
 // @Failure 403
-// @router / [get]
-func (c *{{ctrlName}}Controller) GetAll() {
-	var fields []string
-	var sortby []string
-	var order []string
-	var query = make(map[string]string)
-	var limit int64 = 10
-	var offset int64
+// @router /{{ctrlName}}/add [post]
+func (this *{{ctrlName}}Controller) Add{{ctrlName}}() {
+	var v models.{{ctrlName}}
+	if err := json.Unmarshal(this.Req.Data, &v); err == nil {
+		logs.Debug("查询传参：", v)
+		sql := "string sql 注入测试"
 
-	// fields: col1,col2,entity.col3
-	if v := c.GetString("fields"); v != "" {
-		fields = strings.Split(v, ",")
-	}
-	// limit: 10 (default is 10)
-	if v, err := c.GetInt64("limit"); err == nil {
-		limit = v
-	}
-	// offset: 0 (default is 0)
-	if v, err := c.GetInt64("offset"); err == nil {
-		offset = v
-	}
-	// sortby: col1,col2
-	if v := c.GetString("sortby"); v != "" {
-		sortby = strings.Split(v, ",")
-	}
-	// order: desc,asc
-	if v := c.GetString("order"); v != "" {
-		order = strings.Split(v, ",")
-	}
-	// query: k:v,k:v
-	if v := c.GetString("query"); v != "" {
-		for _, cond := range strings.Split(v, ",") {
-			kv := strings.SplitN(cond, ":", 2)
-			if len(kv) != 2 {
-				c.Data["json"] = errors.New("Error: invalid query key/value pair")
-				c.ServeJSON()
-				return
-			}
-			k, v := kv[0], kv[1]
-			query[k] = v
+		// 非空校验，任意类型，string类型默认sql注入校验
+		if !lib.CheckArgNotNull(sql) {
+			logs.Error("[%s]添加[{{ctrlName}}]失败,输入信息有误", this.User.Account)
+			this.Res = &Response{ErrorFail, "失败，输入信息有误,请稍后重试", nil}
+			return
 		}
-	}
 
-	l, err := models.GetAll{{ctrlName}}(query, fields, sortby, order, offset, limit)
-	if err != nil {
-		c.Data["json"] = err.Error()
+		// 可以为空，但是字符串需要防sql注入校验
+		if !lib.CheckArgString(sql) {
+			logs.Error("[%s]添加[{{ctrlName}}]失败,输入信息有误，参数非法", this.User.Account)
+			this.Res = &Response{ErrorFail, "失败，输入信息有误，参数非法，请稍后重试", nil}
+			return
+		}
+
+		if _, err := models.Add{{ctrlName}}(&v); err != nil {
+			logs.Error("[%s]添加[{{ctrlName}}]失败,数据库操作有误[%v]", this.User.Account, err)
+			this.Res = &Response{ErrorFail, "操作失败,请稍后重试", nil}
+			return
+		} 
+		logs.Info("[%s]添加[{{ctrlName}}]成功", this.User.Account)
+		this.Res = &Response{ErrorNil, "添加成功", nil}
 	} else {
-		c.Data["json"] = l
+		logs.Debug("查询列表请求参数解析错误[%v][%s]", err, this.Req.Data)
+		this.Res = &Response{ErrorFail, "输入信息有误,请重新尝", nil}
 	}
-	c.ServeJSON()
+	return
 }
 
-// Put ...
-// @Title Put
-// @Description update the {{ctrlName}}
-// @Param	id		path 	string	true		"The id you want to update"
-// @Param	body		body 	models.{{ctrlName}}	true		"body for {{ctrlName}} content"
-// @Success 200 {object} models.{{ctrlName}}
-// @Failure 403 :id is not int
-// @router /:id [put]
-func (c *{{ctrlName}}Controller) Put() {
-	idStr := c.Ctx.Input.Param(":id")
-	id, _ := strconv.Atoi(idStr)
-	v := models.{{ctrlName}}{Id: id}
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &v); err == nil {
-		if err := models.Update{{ctrlName}}ById(&v); err == nil {
-			c.Data["json"] = "OK"
-		} else {
-			c.Data["json"] = err.Error()
-		}
-	} else {
-		c.Data["json"] = err.Error()
-	}
-	c.ServeJSON()
+// {{ctrlName}}列表
+type {{ctrlName}}ListRequest struct {
+	Id        int
+	Str       string
+	BeginTime string
+	EndTime   string
+	Page      int64
+	Limit     int64
 }
 
-// Delete ...
-// @Title Delete
-// @Description delete the {{ctrlName}}
-// @Param	id		path 	string	true		"The id you want to delete"
-// @Success 200 {string} delete success!
-// @Failure 403 id is empty
-// @router /:id [delete]
-func (c *{{ctrlName}}Controller) Delete() {
-	idStr := c.Ctx.Input.Param(":id")
-	id, _ := strconv.Atoi(idStr)
-	if err := models.Delete{{ctrlName}}(id); err == nil {
-		c.Data["json"] = "OK"
+type Doc{{ctrlName}}ListRequest struct {
+	Code int
+	Msg  string
+	Data {{ctrlName}}ListRequest
+}
+
+// Get{{ctrlName}}List ...
+// @Title Get{{ctrlName}}List
+// @Description get {{ctrlName}}列表
+// @Param	body	body	controllers.Doc{{ctrlName}}ListRequest	true		"json格式查询请求参数"
+// @Success 200 {object} []models.{{ctrlName}}
+// @Failure 403
+// @router /{{ctrlName}}/list [post]
+func (this *{{ctrlName}}Controller) Get{{ctrlName}}List() {
+	var v {{ctrlName}}ListRequest
+	if err := json.Unmarshal(this.Req.Data, &v); err == nil {
+		logs.Debug("查询传参：", v)
+		var fields []string
+		var sortby []string
+		var order []string
+		var query = make(map[string]string)
+
+		if v.Limit == 0 {
+			v.Limit = 20
+		}
+
+		if lib.CheckArgNotNull(v.Str) {
+			query["Str.contains"] = v.Str
+		}
+		if lib.CheckArgNotNull(v.BeginTime) {
+			query["RegisterTime.gte"] = v.BeginTime
+		}
+		if lib.CheckArgNotNull(v.EndTime) {
+			query["RegisterTime.lte"] = v.EndTime
+		}
+
+		if v.Id != 0 {
+			query["Id"] = ps("%d", v.Id)
+		}
+
+		logs.Debug(query, fields, sortby, order, (v.Page-1)*v.Limit, v.Limit)
+
+		list, count, err := models.GetAll{{ctrlName}}(query, fields, sortby, order, (v.Page-1)*v.Limit, v.Limit)
+		if err != nil {
+			logs.Error("查询[{{ctrlName}}]列表失败[%v]", err)
+			this.Res = &Response{ErrorFail, "查询[{{ctrlName}}]列表失败", nil}
+			return
+		}
+
+		result := make(map[string]interface{}, 2)
+		result["List"] = list
+		result["Count"] = count
+
+		logs.Info("[%s][{{ctrlName}}]列表查询成功[%d]", this.User.Account, count)
+		this.Res = &Response{ErrorNil, "查询[{{ctrlName}}]列表成功", result}
 	} else {
-		c.Data["json"] = err.Error()
+		logs.Debug("查询用户列表请求参数解析错误[%v][%s]", err, this.Req.Data)
+		this.Res = &Response{ErrorFail, "输入信息有误,请重新尝", nil}
 	}
-	c.ServeJSON()
+	return
+}
+
+type DocUpdate{{ctrlName}}Request struct {
+	Code int
+	Msg  string
+	Data models.{{ctrlName}}
+}
+
+// Update{{ctrlName}} ...
+// @Title Update{{ctrlName}}
+// @Description get 修改{{ctrlName}}
+// @Param	body	body	controllers.DocUpdate{{ctrlName}}Request	true		"json格式修改请求参数"
+// @Success 200 {object} controllers.DocResponse
+// @Failure 403
+// @router /{{ctrlName}}/put [post]
+func (this *{{ctrlName}}Controller) Update{{ctrlName}}() {
+	var v models.{{ctrlName}}
+	if err := json.Unmarshal(this.Req.Data, &v); err == nil {
+		logs.Debug("查询传参：", v)
+		sql := "string sql 注入测试"
+
+		// 非空校验，任意类型，string类型默认sql注入校验
+		if !lib.CheckArgNotNull(sql) {
+			logs.Error("[%s]修改[{{ctrlName}}]失败,输入信息有误", this.User.Account)
+			this.Res = &Response{ErrorFail, "失败，输入信息有误,请稍后重试", nil}
+			return
+		}
+
+		// 可以为空，但是字符串需要防sql注入校验
+		if !lib.CheckArgString(sql) {
+			logs.Error("[%s]修改[{{ctrlName}}]失败,输入信息有误，参数非法", this.User.Account)
+			this.Res = &Response{ErrorFail, "失败，输入信息有误，参数非法，请稍后重试", nil}
+			return
+		}
+
+		if err := models.Update{{ctrlName}}ById(&v); err != nil {
+			logs.Error("[%s]修改[{{ctrlName}}]失败,数据库操作有误[%v]", this.User.Account, err)
+			this.Res = &Response{ErrorFail, "操作失败,请稍后重试", nil}
+			return
+		} 
+		logs.Info("[%s]修改[{{ctrlName}}]成功", this.User.Account)
+		this.Res = &Response{ErrorNil, "修改成功", nil}
+	} else {
+		logs.Debug("查询列表请求参数解析错误[%v][%s]", err, this.Req.Data)
+		this.Res = &Response{ErrorFail, "输入信息有误,请重新尝", nil}
+	}
+	return
 }
 `
 	RouterTPL = `// @APIVersion 1.0.0

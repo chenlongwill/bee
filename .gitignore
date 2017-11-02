@@ -1,32 +1,8 @@
-# Compiled Object files, Static and Dynamic libs (Shared Objects)
-*.o
-*.a
-*.so
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# Folders
-_obj
-_test
-.idea
-.vscode
-
-# Architecture specific extensions/prefixes
-*.[568vq]
-[568vq].out
-
-*.cgo1.go
-*.cgo2.c
-_cgo_defun.c
-_cgo_gotypes.go
-_cgo_export.*
-
-_testmain.go
-
-*.exe
-*.test
-*.prof
-
-#Custom
-.DS_Store
+# production
+bee.exe
+bee.exe~
 bee
-*.exe~
-.goxc.local.json
+# misc
+.DS_Store

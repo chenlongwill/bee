@@ -7,12 +7,12 @@ import (
 	"path"
 	"strings"
 
-	"github.com/beego/bee/cmd/commands"
-	"github.com/beego/bee/cmd/commands/api"
-	"github.com/beego/bee/cmd/commands/version"
-	"github.com/beego/bee/generate"
-	beeLogger "github.com/beego/bee/logger"
-	"github.com/beego/bee/utils"
+	"bee/cmd/commands"
+	"bee/cmd/commands/api"
+	"bee/cmd/commands/version"
+	"bee/generate"
+	beeLogger "bee/logger"
+	"bee/utils"
 )
 
 var CmdHproseapp = &commands.Command{

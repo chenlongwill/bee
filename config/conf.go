@@ -19,7 +19,7 @@ import (
 	"os"
 	"path/filepath"
 
-	beeLogger "github.com/beego/bee/logger"
+	beeLogger "bee/logger"
 	"gopkg.in/yaml.v2"
 )
 
