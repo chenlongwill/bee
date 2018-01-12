@@ -218,6 +218,14 @@ func CamelCase(in string) string {
 	return strings.Join(tokens, "")
 }
 
+func CamelCaseLittle(in string) string {
+	tokens := strings.Split(in, "_")
+	for i := range tokens {
+		tokens[i] = strings.Trim(tokens[i], " ")
+	}
+	return strings.Join(tokens, "")
+}
+
 // formatSourceCode formats source files
 func FormatSourceCode(filename string) {
 	cmd := exec.Command("gofmt", "-w", filename)

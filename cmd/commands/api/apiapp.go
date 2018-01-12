@@ -632,6 +632,11 @@ func createAPI(cmd *commands.Command, args []string) int {
 		utils.WriteToFile(path.Join(appPath, "main.go"),
 			strings.Replace(apiMaingo, "{{.Appname}}", packPath, -1))
 	}
+	/* ==============================api_base_controller============================== */
+	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "controllers", "base_controller.go"), "\x1b[0m")
+	utils.WriteToFile(path.Join(appPath, "controllers", "base_controller.go"),
+		strings.Replace(api_base_controller, "{{.Appname}}", packPath, -1))
+	/* ==============================api_base_controller============================== */
 	beeLogger.Log.Success("New API successfully created!")
 	return 0
 }

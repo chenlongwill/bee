@@ -852,6 +852,7 @@ func writeControllerFiles(tables []*Table, cPath string, selectedTables map[stri
 			}
 		}
 		fileStr := strings.Replace(CtrlTPL, "{{ctrlName}}", utils.CamelCase(tb.Name), -1)
+		fileStr = strings.Replace(fileStr, "{{ctrlname}}", utils.CamelCaseLittle(tb.Name), -1)
 		fileStr = strings.Replace(fileStr, "{{pkgPath}}", pkgPath, -1)
 		if _, err := f.WriteString(fileStr); err != nil {
 			beeLogger.Log.Fatalf("Could not write controller file to '%s': %s", fpath, err)
@@ -1176,7 +1177,7 @@ import (
 
 // 后台管理API接口专用
 type {{ctrlName}}Controller struct {
-	SysOnlineAuthController
+	SysOnlineController
 }
 
 type DocAdd{{ctrlName}}Request struct {
@@ -1185,13 +1186,12 @@ type DocAdd{{ctrlName}}Request struct {
 	Data models.{{ctrlName}}
 }
 
-// Add{{ctrlName}} ...
 // @Title Add{{ctrlName}}
 // @Description get 添加{{ctrlName}}
 // @Param	body	body	controllers.DocAdd{{ctrlName}}Request	true		"json格式添加请求参数"
 // @Success 200 {object} controllers.DocResponse
 // @Failure 403
-// @router /{{ctrlName}}/add [post]
+// @router /{{ctrlname}}/add [post]
 func (this *{{ctrlName}}Controller) Add{{ctrlName}}() {
 	var v models.{{ctrlName}}
 	if err := json.Unmarshal(this.Req.Data, &v); err == nil {
@@ -1248,7 +1248,7 @@ type Doc{{ctrlName}}ListRequest struct {
 // @Param	body	body	controllers.Doc{{ctrlName}}ListRequest	true		"json格式查询请求参数"
 // @Success 200 {object} []models.{{ctrlName}}
 // @Failure 403
-// @router /{{ctrlName}}/list [post]
+// @router /{{ctrlname}}/list [post]
 func (this *{{ctrlName}}Controller) Get{{ctrlName}}List() {
 	var v {{ctrlName}}ListRequest
 	if err := json.Unmarshal(this.Req.Data, &v); err == nil {
@@ -1310,7 +1310,7 @@ type DocUpdate{{ctrlName}}Request struct {
 // @Param	body	body	controllers.DocUpdate{{ctrlName}}Request	true		"json格式修改请求参数"
 // @Success 200 {object} controllers.DocResponse
 // @Failure 403
-// @router /{{ctrlName}}/put [post]
+// @router /{{ctrlname}}/update [post]
 func (this *{{ctrlName}}Controller) Update{{ctrlName}}() {
 	var v models.{{ctrlName}}
 	if err := json.Unmarshal(this.Req.Data, &v); err == nil {
@@ -1361,7 +1361,7 @@ import (
 )
 
 func init() {
-	ns := beego.NewNamespace("/v1",
+	ns := beego.NewNamespace("/api",
 		{{nameSpaces}}
 	)
 	beego.AddNamespace(ns)
