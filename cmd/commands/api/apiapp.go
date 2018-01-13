@@ -20,11 +20,11 @@ import (
 	path "path/filepath"
 	"strings"
 
-	"bee/cmd/commands"
-	"bee/cmd/commands/version"
-	"bee/generate"
-	beeLogger "bee/logger"
-	"bee/utils"
+	"github.com/chenlongwill/bee/cmd/commands"
+	"github.com/chenlongwill/bee/cmd/commands/version"
+	"github.com/chenlongwill/bee/generate"
+	beeLogger "github.com/chenlongwill/bee/logger"
+	"github.com/chenlongwill/bee/utils"
 )
 
 var CmdApiapp = &commands.Command{
@@ -649,6 +649,9 @@ func createAPI(cmd *commands.Command, args []string) int {
 	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "controllers", "base_time.go"), "\x1b[0m")
 	utils.WriteToFile(path.Join(appPath, "controllers", "base_time.go"),
 		strings.Replace(api_base_time, "{{.Appname}}", packPath, -1))
+	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "models", "var_sys_user.go"), "\x1b[0m")
+	utils.WriteToFile(path.Join(appPath, "models", "var_sys_user.go"),
+		strings.Replace(api_var_sys_user, "{{.Appname}}", packPath, -1))
 	/* ==============================api_base_controller============================== */
 	beeLogger.Log.Success("New API successfully created!!")
 	return 0

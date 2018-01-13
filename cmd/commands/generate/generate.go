@@ -17,13 +17,13 @@ import (
 	"os"
 	"strings"
 
-	"bee/cmd/commands"
-	"bee/cmd/commands/version"
-	"bee/config"
-	"bee/generate"
-	"bee/generate/swaggergen"
-	"bee/logger"
-	"bee/utils"
+	"github.com/chenlongwill/bee/cmd/commands"
+	"github.com/chenlongwill/bee/cmd/commands/version"
+	"github.com/chenlongwill/bee/config"
+	"github.com/chenlongwill/bee/generate"
+	"github.com/chenlongwill/bee/generate/swaggergen"
+	"github.com/chenlongwill/bee/logger"
+	"github.com/chenlongwill/bee/utils"
 )
 
 var CmdGenerate = &commands.Command{

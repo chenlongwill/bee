@@ -23,9 +23,9 @@ import (
 	"regexp"
 	"strings"
 
-	beeLogger "bee/logger"
-	"bee/logger/colors"
-	"bee/utils"
+	beeLogger "github.com/chenlongwill/bee/logger"
+	"github.com/chenlongwill/bee/logger/colors"
+	"github.com/chenlongwill/bee/utils"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
 )
@@ -1315,7 +1315,7 @@ func (this *{{ctrlName}}Controller) Update{{ctrlName}}() {
 			return
 		}
 
-		if _, err := models.Update{{ctrlName}}(&v); err != nil {
+		if err := models.Update{{ctrlName}}ById(&v); err != nil {
 			this.Error(err, "数据操作失败，请稍后重试")
 			return
 		}

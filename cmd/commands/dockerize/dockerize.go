@@ -22,10 +22,10 @@ import (
 	"strings"
 	"text/template"
 
-	"bee/cmd/commands"
-	"bee/cmd/commands/version"
-	beeLogger "bee/logger"
-	"bee/utils"
+	"github.com/chenlongwill/bee/cmd/commands"
+	"github.com/chenlongwill/bee/cmd/commands/version"
+	beeLogger "github.com/chenlongwill/bee/logger"
+	"github.com/chenlongwill/bee/utils"
 )
 
 const dockerBuildTemplate = `FROM {{.BaseImage}}

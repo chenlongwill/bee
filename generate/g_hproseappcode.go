@@ -24,9 +24,9 @@ import (
 	"path"
 	"strings"
 
-	beeLogger "bee/logger"
-	"bee/logger/colors"
-	"bee/utils"
+	beeLogger "github.com/chenlongwill/bee/logger"
+	"github.com/chenlongwill/bee/logger/colors"
+	"github.com/chenlongwill/bee/utils"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
 )

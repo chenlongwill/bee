@@ -14,7 +14,7 @@
 
 package generate
 
-import "bee/utils"
+import "github.com/chenlongwill/bee/utils"
 
 var SQLDriver utils.DocValue
 var SQLConn utils.DocValue

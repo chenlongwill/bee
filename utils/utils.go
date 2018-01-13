@@ -29,8 +29,8 @@ import (
 	"time"
 	"unicode"
 
-	beeLogger "bee/logger"
-	"bee/logger/colors"
+	beeLogger "github.com/chenlongwill/bee/logger"
+	"github.com/chenlongwill/bee/logger/colors"
 )
 
 // Go is a basic promise implementation: it wraps calls a function in a goroutine

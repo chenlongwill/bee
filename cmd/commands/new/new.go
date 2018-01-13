@@ -20,11 +20,11 @@ import (
 	path "path/filepath"
 	"strings"
 
-	"bee/cmd/commands"
-	"bee/cmd/commands/version"
-	beeLogger "bee/logger"
-	"bee/logger/colors"
-	"bee/utils"
+	"github.com/chenlongwill/bee/cmd/commands"
+	"github.com/chenlongwill/bee/cmd/commands/version"
+	beeLogger "github.com/chenlongwill/bee/logger"
+	"github.com/chenlongwill/bee/logger/colors"
+	"github.com/chenlongwill/bee/utils"
 )
 
 var CmdNew = &commands.Command{

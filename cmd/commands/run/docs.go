@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	beeLogger "bee/logger"
+	beeLogger "github.com/chenlongwill/bee/logger"
 )
 
 var (
