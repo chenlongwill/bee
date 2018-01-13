@@ -60,11 +60,61 @@ var CmdApiapp = &commands.Command{
 	Run:    createAPI,
 }
 var apiconf = `appname = {{.Appname}}
-httpport = 8080
 runmode = dev
 autorender = false
 copyrequestbody = true
+# 跨域域名
+origins = localhost
+
+# API请求超时时间s
+ServerTimeOut = 5
+
+# 日志方式配置 file：文件  print：命令行输出
+logmode = print
+# 日志路径配置
+logpath = ~/logs/{{.Appname}}.log
+
+# 是否开启api接口文档
 EnableDocs = true
+
+# http服务端口
+httpport = 8030
+
+# https服务端口
+EnableHTTPS = true
+HTTPSPort = 8031
+HTTPSCertFile = conf/{{.Appname}}.crt
+HTTPSKeyFile = conf/{{.Appname}}.key
+
+# mysql连接池跃连接数
+mysql_maxidle = 10
+# mysql最大连接数
+mysql_maxconn = 100
+# mysql数据库连接地址，读写分离
+mysql_read = root:root@(127.0.0.1:3306)/{{.Appname}}_dev?charset=utf8
+mysql_write = root:root@(127.0.0.1:3306)/{{.Appname}}_dev?charset=utf8
+
+# redis数据库名
+dbname = {{.Appname}}
+# redis链接地址
+redis = ":6379"
+# redis默认数据库
+redisdefaultdb = 0
+# redis连接池最大空闲数，超时回收
+redismaxidle = 20
+
+# session过期时间设定，默认24小时（秒）
+session_timeout = 86400
+# 短信验证码超时设置5分钟（秒）
+vcode_timeout = 300
+
+# 消息推送地址
+push_addr = localhost:57172
+
+# 静态文件上传存放地址
+static_upload = ~/static
+# 静态文件下载访问地址
+static_down = http://static.{{.Appname}}.com
 `
 var apiMaingo = `package main
 
@@ -86,23 +136,98 @@ func main() {
 var apiMainconngo = `package main
 
 import (
-	_ "{{.Appname}}/routers"
-
+	"fmt"
+	
 	"github.com/astaxie/beego"
+	"github.com/astaxie/beego/logs"
 	"github.com/astaxie/beego/orm"
+	"github.com/astaxie/beego/plugins/cors"
+	"github.com/astaxie/beego/toolbox"
+	"github.com/chenlongwill/lib"
 	{{.DriverPkg}}
+
+	"{{.Appname}}/controllers"
+	_ "{{.Appname}}/routers"
 )
 
-func init() {
-	orm.RegisterDataBase("default", "{{.DriverName}}", "{{.conn}}")
-}
+var ps = fmt.Sprintf
 
 func main() {
+	// 系统化初始化，优先级最高
+	LogInit()
+	MysqlInit()
+	OriginInit()
+	SwaggerInit()
+	lib.RedisConnect()
+
+	// 时间初始化，包含定时器任务
+	controllers.TimeInit()
+	controllers.BatchInitSystemParam()
+
+	//批量任务开始执行
+	toolbox.StartTask()
+	defer toolbox.StopTask()
+
+	beego.Run()
+}
+
+// 日志配置
+func LogInit() {
+	// 日志配置:
+	// filename 保存的文件名
+	// maxlines 每个文件保存的最大行数，默认值 1000000
+	// maxsize 每个文件保存的最大尺寸，默认值是 1 << 28, //256 MB
+	// daily 是否按照每天 logrotate，默认是 true
+	// maxdays 文件最多保存多少天，默认保存 7 天
+	// rotate 是否开启 logrotate，默认是 true
+	// level 日志保存的时候的级别，默认是 Trace 级别
+	// perm 日志文件权限
+	if beego.AppConfig.DefaultString("logmode", "print") == "file" {
+		logs.SetLogger(logs.AdapterFile, ps("{\"filename\":\"%s\"}", beego.AppConfig.DefaultString("logpath", "./logs/{{.Appname}}.log")))
+	}
+	// 输出调用的文件名和文件行号
+	logs.EnableFuncCallDepth(true)
+	// 异步输出日志
+	logs.Async(1e3)
+	logs.GetLogger("init").Println("日志配置成功...")
+	return
+}
+
+// mysql数据库配置
+func MysqlInit() {
+	err := orm.RegisterDataBase("default", "mysql", beego.AppConfig.String("mysql_read"), beego.AppConfig.DefaultInt("mysql_maxidle", 10), beego.AppConfig.DefaultInt("mysql_maxconn", 50))
+	if err != nil {
+		panic("mysql数据库mysql_read连接失败")
+	}
+	err = orm.RegisterDataBase("write", "mysql", beego.AppConfig.String("mysql_write"), beego.AppConfig.DefaultInt("mysql_maxidle", 10), beego.AppConfig.DefaultInt("mysql_maxconn", 50))
+	if err != nil {
+		panic("mysql数据库mysql_read连接失败")
+	}
+	logs.GetLogger("init").Println("数据库[%s]连接成功...", beego.AppConfig.String("mysql_vv_core"))
+	return
+}
+
+// 跨域设置
+func OriginInit() {
+	beego.InsertFilter("*", beego.BeforeRouter, cors.Allow(&cors.Options{
+		AllowOrigins:     beego.AppConfig.DefaultStrings("origins", []string{"*"}),
+		AllowMethods:     []string{"POST", "OPTIONS"},
+		AllowHeaders:     []string{"X-Requested-With", "accept", "Origin", "content-type"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+	}))
+	logs.GetLogger("init").Println("跨域配置成功...")
+	return
+}
+
+// api接口页面
+func SwaggerInit() {
 	if beego.BConfig.RunMode == "dev" {
 		beego.BConfig.WebConfig.DirectoryIndex = true
-		beego.BConfig.WebConfig.StaticDir["/swagger"] = "swagger"
+		beego.BConfig.WebConfig.StaticDir[beego.AppConfig.DefaultString("doc", "/doc")] = "swagger"
+		logs.GetLogger("init").Println("开发环境开启自动化API文档成功...")
 	}
-	beego.Run()
+	return
 }
 
 `
@@ -575,6 +700,8 @@ func createAPI(cmd *commands.Command, args []string) int {
 	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "controllers"), "\x1b[0m")
 	os.Mkdir(path.Join(appPath, "tests"), 0755)
 	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "tests"), "\x1b[0m")
+	os.Mkdir(path.Join(appPath, "logs"), 0755)
+	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "logs"), "\x1b[0m")
 	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "conf", "app.conf"), "\x1b[0m")
 	utils.WriteToFile(path.Join(appPath, "conf", "app.conf"),
 		strings.Replace(apiconf, "{{.Appname}}", path.Base(args[0]), -1))
