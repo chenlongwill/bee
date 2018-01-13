@@ -1170,8 +1170,8 @@ import (
 	"encoding/json"
 
 	"github.com/astaxie/beego/logs"
+	"github.com/chenlongwill/lib"
 
-	"{{pkgPath}}/lib"
 	"{{pkgPath}}/models"
 )
 
@@ -1195,33 +1195,25 @@ type DocAdd{{ctrlName}}Request struct {
 func (this *{{ctrlName}}Controller) Add{{ctrlName}}() {
 	var v models.{{ctrlName}}
 	if err := json.Unmarshal(this.Req.Data, &v); err == nil {
-		logs.Debug("查询传参：", v)
-		sql := "string sql 注入测试"
-
-		// 非空校验，任意类型，string类型默认sql注入校验
-		if !lib.CheckArgNotNull(sql) {
-			logs.Error("[%s]添加[{{ctrlName}}]失败,输入信息有误", this.User.Account)
-			this.Res = &Response{ErrorFail, "失败，输入信息有误,请稍后重试", nil}
+		// 非空校验，任意类型
+		if lib.CheckStructArgNotNull(v, "Id") != "" {
+			this.Error(nil, "请求失败，请输入%s", lib.CheckStructArgNotNull(v, "Id"))
 			return
 		}
 
 		// 可以为空，但是字符串需要防sql注入校验
-		if !lib.CheckArgString(sql) {
-			logs.Error("[%s]添加[{{ctrlName}}]失败,输入信息有误，参数非法", this.User.Account)
-			this.Res = &Response{ErrorFail, "失败，输入信息有误，参数非法，请稍后重试", nil}
+		if lib.CheckStructStringSql(v, "Id") != "" {
+			this.Error(nil, "请求失败，请输入%s", lib.CheckStructStringSql(v, "Id"))
 			return
 		}
 
 		if _, err := models.Add{{ctrlName}}(&v); err != nil {
-			logs.Error("[%s]添加[{{ctrlName}}]失败,数据库操作有误[%v]", this.User.Account, err)
-			this.Res = &Response{ErrorFail, "操作失败,请稍后重试", nil}
+			this.Error(err, "数据操作失败，请稍后重试")
 			return
-		} 
-		logs.Info("[%s]添加[{{ctrlName}}]成功", this.User.Account)
-		this.Res = &Response{ErrorNil, "添加成功", nil}
+		}
+		this.Success(nil, "添加成功")
 	} else {
-		logs.Debug("查询列表请求参数解析错误[%v][%s]", err, this.Req.Data)
-		this.Res = &Response{ErrorFail, "输入信息有误,请重新尝", nil}
+		this.Error(err, "输入信息解析失败，请稍后重试")
 	}
 	return
 }
@@ -1262,13 +1254,13 @@ func (this *{{ctrlName}}Controller) Get{{ctrlName}}List() {
 			v.Limit = 20
 		}
 
-		if lib.CheckArgNotNull(v.Str) {
+		if v.Str != "" {
 			query["Str.contains"] = v.Str
 		}
-		if lib.CheckArgNotNull(v.BeginTime) {
+		if v.BeginTime != "" {
 			query["RegisterTime.gte"] = v.BeginTime
 		}
-		if lib.CheckArgNotNull(v.EndTime) {
+		if v.EndTime != "" {
 			query["RegisterTime.lte"] = v.EndTime
 		}
 
@@ -1280,8 +1272,7 @@ func (this *{{ctrlName}}Controller) Get{{ctrlName}}List() {
 
 		list, count, err := models.GetAll{{ctrlName}}(query, fields, sortby, order, (v.Page-1)*v.Limit, v.Limit)
 		if err != nil {
-			logs.Error("查询[{{ctrlName}}]列表失败[%v]", err)
-			this.Res = &Response{ErrorFail, "查询[{{ctrlName}}]列表失败", nil}
+			this.Error(err, "查询失败")
 			return
 		}
 
@@ -1289,11 +1280,9 @@ func (this *{{ctrlName}}Controller) Get{{ctrlName}}List() {
 		result["List"] = list
 		result["Count"] = count
 
-		logs.Info("[%s][{{ctrlName}}]列表查询成功[%d]", this.User.Account, count)
-		this.Res = &Response{ErrorNil, "查询[{{ctrlName}}]列表成功", result}
+		this.Success(nil, "查询成功")
 	} else {
-		logs.Debug("查询用户列表请求参数解析错误[%v][%s]", err, this.Req.Data)
-		this.Res = &Response{ErrorFail, "输入信息有误,请重新尝", nil}
+		this.Error(err, "输入信息解析失败，请稍后重试")
 	}
 	return
 }
@@ -1314,33 +1303,25 @@ type DocUpdate{{ctrlName}}Request struct {
 func (this *{{ctrlName}}Controller) Update{{ctrlName}}() {
 	var v models.{{ctrlName}}
 	if err := json.Unmarshal(this.Req.Data, &v); err == nil {
-		logs.Debug("查询传参：", v)
-		sql := "string sql 注入测试"
-
-		// 非空校验，任意类型，string类型默认sql注入校验
-		if !lib.CheckArgNotNull(sql) {
-			logs.Error("[%s]修改[{{ctrlName}}]失败,输入信息有误", this.User.Account)
-			this.Res = &Response{ErrorFail, "失败，输入信息有误,请稍后重试", nil}
+		// 非空校验，任意类型
+		if lib.CheckStructArgNotNull(v, "Id") != "" {
+			this.Error(nil, "请求失败，请输入%s", lib.CheckStructArgNotNull(v, "Id"))
 			return
 		}
 
 		// 可以为空，但是字符串需要防sql注入校验
-		if !lib.CheckArgString(sql) {
-			logs.Error("[%s]修改[{{ctrlName}}]失败,输入信息有误，参数非法", this.User.Account)
-			this.Res = &Response{ErrorFail, "失败，输入信息有误，参数非法，请稍后重试", nil}
+		if lib.CheckStructStringSql(v, "Id") != "" {
+			this.Error(nil, "请求失败，请输入%s", lib.CheckStructStringSql(v, "Id"))
 			return
 		}
 
-		if err := models.Update{{ctrlName}}ById(&v); err != nil {
-			logs.Error("[%s]修改[{{ctrlName}}]失败,数据库操作有误[%v]", this.User.Account, err)
-			this.Res = &Response{ErrorFail, "操作失败,请稍后重试", nil}
+		if _, err := models.Update{{ctrlName}}(&v); err != nil {
+			this.Error(err, "数据操作失败，请稍后重试")
 			return
-		} 
-		logs.Info("[%s]修改[{{ctrlName}}]成功", this.User.Account)
-		this.Res = &Response{ErrorNil, "修改成功", nil}
+		}
+		this.Success(nil, "修改成功")
 	} else {
-		logs.Debug("查询列表请求参数解析错误[%v][%s]", err, this.Req.Data)
-		this.Res = &Response{ErrorFail, "输入信息有误,请重新尝", nil}
+		this.Error(err, "输入信息解析失败，请稍后重试")
 	}
 	return
 }

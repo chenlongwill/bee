@@ -633,10 +633,23 @@ func createAPI(cmd *commands.Command, args []string) int {
 			strings.Replace(apiMaingo, "{{.Appname}}", packPath, -1))
 	}
 	/* ==============================api_base_controller============================== */
+	beeLogger.Log.Info("Creating Base Controller File For API...")
 	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "controllers", "base_controller.go"), "\x1b[0m")
 	utils.WriteToFile(path.Join(appPath, "controllers", "base_controller.go"),
 		strings.Replace(api_base_controller, "{{.Appname}}", packPath, -1))
+	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "controllers", "base_batch.go"), "\x1b[0m")
+	utils.WriteToFile(path.Join(appPath, "controllers", "base_batch.go"),
+		strings.Replace(api_base_batch, "{{.Appname}}", packPath, -1))
+	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "controllers", "base_define.go"), "\x1b[0m")
+	utils.WriteToFile(path.Join(appPath, "controllers", "base_define.go"),
+		strings.Replace(api_base_define, "{{.Appname}}", packPath, -1))
+	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "controllers", "base_session.go"), "\x1b[0m")
+	utils.WriteToFile(path.Join(appPath, "controllers", "base_session.go"),
+		strings.Replace(api_base_session, "{{.Appname}}", packPath, -1))
+	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "controllers", "base_time.go"), "\x1b[0m")
+	utils.WriteToFile(path.Join(appPath, "controllers", "base_time.go"),
+		strings.Replace(api_base_time, "{{.Appname}}", packPath, -1))
 	/* ==============================api_base_controller============================== */
-	beeLogger.Log.Success("New API successfully created!")
+	beeLogger.Log.Success("New API successfully created!!")
 	return 0
 }
