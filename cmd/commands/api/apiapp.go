@@ -81,7 +81,7 @@ EnableDocs = true
 httpport = 8030
 
 # https服务端口
-EnableHTTPS = true
+EnableHTTPS = false
 HTTPSPort = 8031
 HTTPSCertFile = conf/{{.Appname}}.crt
 HTTPSKeyFile = conf/{{.Appname}}.key
@@ -91,8 +91,8 @@ mysql_maxidle = 10
 # mysql最大连接数
 mysql_maxconn = 100
 # mysql数据库连接地址，读写分离
-mysql_read = root:root@(127.0.0.1:3306)/{{.Appname}}_dev?charset=utf8
-mysql_write = root:root@(127.0.0.1:3306)/{{.Appname}}_dev?charset=utf8
+mysql_read = {{.conn}}
+mysql_write = {{.conn}}
 
 # redis数据库名
 dbname = {{.Appname}}
@@ -703,8 +703,9 @@ func createAPI(cmd *commands.Command, args []string) int {
 	os.Mkdir(path.Join(appPath, "logs"), 0755)
 	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "logs"), "\x1b[0m")
 	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "conf", "app.conf"), "\x1b[0m")
+	configGoContent := strings.Replace(apiconf, "{{.conn}}", generate.SQLConn.String(), -1)
 	utils.WriteToFile(path.Join(appPath, "conf", "app.conf"),
-		strings.Replace(apiconf, "{{.Appname}}", path.Base(args[0]), -1))
+		strings.Replace(configGoContent, "{{.Appname}}", path.Base(args[0]), -1))
 
 	if generate.SQLConn != "" {
 		fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "main.go"), "\x1b[0m")
