@@ -787,12 +787,17 @@ func writeModelFiles(tables []*Table, mPath string, selectedTables map[string]bo
 			}
 		}
 		var template string
+		var tbstring = tb.String()
 		if tb.Pk == "" {
 			template = StructModelTPL
 		} else {
-			template = ModelTPL
+			if strings.Contains(tbstring, "init_map") {
+				template = ModelMapTPL
+			} else {
+				template = ModelTPL
+			}
 		}
-		fileStr := strings.Replace(template, "{{modelStruct}}", tb.String(), 1)
+		fileStr := strings.Replace(template, "{{modelStruct}}", tbstring, 1)
 		fileStr = strings.Replace(fileStr, "{{modelName}}", utils.CamelCase(tb.Name), -1)
 		fileStr = strings.Replace(fileStr, "{{tableName}}", tb.Name, -1)
 
@@ -879,7 +884,7 @@ func writeRouterFile(tables []*Table, rPath string, selectedTables map[string]bo
 			continue
 		}
 		// Add namespaces
-		nameSpace := strings.Replace(NamespaceTPL, "{{nameSpace}}", tb.Name, -1)
+		nameSpace := strings.Replace(NamespaceTPL, "{{nameSpace}}", utils.CamelCaseLittle(tb.Name), -1)
 		nameSpace = strings.Replace(nameSpace, "{{ctrlName}}", utils.CamelCase(tb.Name), -1)
 		nameSpaces = append(nameSpaces, nameSpace)
 	}
@@ -1016,10 +1021,10 @@ const (
 
 import (
 	"errors"
-	"fmt"
 	"reflect"
 	"strings"
 	{{timePkg}}
+	"github.com/astaxie/beego/logs"
 	"github.com/astaxie/beego/orm"
 )
 
@@ -1037,6 +1042,7 @@ func init() {
 // last inserted Id on success.
 func Add{{modelName}}(m *{{modelName}}) (id int64, err error) {
 	o := orm.NewOrm()
+	o.Using("write")
 	id, err = o.Insert(m)
 	return
 }
@@ -1138,12 +1144,13 @@ func GetAll{{modelName}}(query map[string]string, fields []string, sortby []stri
 // the record to be updated doesn't exist
 func Update{{modelName}}ById(m *{{modelName}}) (err error) {
 	o := orm.NewOrm()
+	o.Using("write")
 	v := {{modelName}}{Id: m.Id}
 	// ascertain id exists in the database
 	if err = o.Read(&v); err == nil {
 		var num int64
 		if num, err = o.Update(m); err == nil {
-			fmt.Println("Number of records updated in database:", num)
+			logs.Info("Number of {{modelName}} updated in database:", num)
 		}
 	}
 	return
@@ -1153,17 +1160,182 @@ func Update{{modelName}}ById(m *{{modelName}}) (err error) {
 // the record to be deleted doesn't exist
 func Delete{{modelName}}(id int) (err error) {
 	o := orm.NewOrm()
+	o.Using("write")
 	v := {{modelName}}{Id: id}
 	// ascertain id exists in the database
 	if err = o.Read(&v); err == nil {
 		var num int64
 		if num, err = o.Delete(&{{modelName}}{Id: id}); err == nil {
-			fmt.Println("Number of records deleted in database:", num)
+			logs.Info("Number of {{modelName}} deleted in database:", num)
 		}
 	}
 	return
 }
 `
+
+	ModelMapTPL = `package models
+
+import (
+	"errors"
+	"reflect"
+	"strings"
+	{{timePkg}}
+	"github.com/astaxie/beego/logs"
+	"github.com/astaxie/beego/orm"
+)
+
+{{modelStruct}}
+
+func (t *{{modelName}}) TableName() string {
+	return "{{tableName}}"
+}
+
+func init() {
+	orm.RegisterModel(new({{modelName}}))
+}
+
+// 获取所有表数据到{{modelName}}Map
+func GetAll{{modelName}}ToMap(list *[]{{modelName}}) (num int64, err error) {
+	o := orm.NewOrm()
+	num, err = o.Raw("select * from {{tableName}} limit 0,10000").QueryRows(list)
+	return
+}
+
+// Add{{modelName}} insert a new {{modelName}} into database and returns
+// last inserted Id on success.
+func Add{{modelName}}(m *{{modelName}}) (id int64, err error) {
+	o := orm.NewOrm()
+	o.Using("write")
+	id, err = o.Insert(m)
+	return
+}
+
+// Get{{modelName}}ById retrieves {{modelName}} by Id. Returns error if
+// Id doesn't exist
+func Get{{modelName}}ById(id int) (v *{{modelName}}, err error) {
+	o := orm.NewOrm()
+	v = &{{modelName}}{Id: id}
+	if err = o.Read(v); err == nil {
+		return v, nil
+	}
+	return nil, err
+}
+
+// GetAll{{modelName}} retrieves all {{modelName}} matches certain condition. Returns empty list if
+// no records exist
+func GetAll{{modelName}}(query map[string]string, fields []string, sortby []string, order []string,
+	offset int64, limit int64) (ml []interface{}, num int64, err error) {
+	o := orm.NewOrm()
+	qs := o.QueryTable(new({{modelName}}))
+	// query k=v
+	for k, v := range query {
+		// rewrite dot-notation to Object__Attribute
+		k = strings.Replace(k, ".", "__", -1)
+		if strings.Contains(k, "isnull") {
+			qs = qs.Filter(k, (v == "true" || v == "1"))
+		} else {
+			qs = qs.Filter(k, v)
+		}
+	}
+	// order by:
+	var sortFields []string
+	if len(sortby) != 0 {
+		if len(sortby) == len(order) {
+			// 1) for each sort field, there is an associated order
+			for i, v := range sortby {
+				orderby := ""
+				if order[i] == "desc" {
+					orderby = "-" + v
+				} else if order[i] == "asc" {
+					orderby = v
+				} else {
+					return nil, 0, errors.New("Error: Invalid order. Must be either [asc|desc]")
+				}
+				sortFields = append(sortFields, orderby)
+			}
+			qs = qs.OrderBy(sortFields...)
+		} else if len(sortby) != len(order) && len(order) == 1 {
+			// 2) there is exactly one order, all the sorted fields will be sorted by this order
+			for _, v := range sortby {
+				orderby := ""
+				if order[0] == "desc" {
+					orderby = "-" + v
+				} else if order[0] == "asc" {
+					orderby = v
+				} else {
+					return nil, 0, errors.New("Error: Invalid order. Must be either [asc|desc]")
+				}
+				sortFields = append(sortFields, orderby)
+			}
+		} else if len(sortby) != len(order) && len(order) != 1 {
+			return nil, 0, errors.New("Error: 'sortby', 'order' sizes mismatch or 'order' size is not 1")
+		}
+	} else {
+		if len(order) != 0 {
+			return nil, 0, errors.New("Error: unused 'order' fields")
+		}
+	}
+
+	var l []{{modelName}}
+	qs = qs.OrderBy(sortFields...)
+	num, err = qs.Count()
+	if err != nil {
+		return nil, 0, err
+	}
+	if _, err = qs.Limit(limit, offset).All(&l, fields...); err == nil {
+		if len(fields) == 0 {
+			for _, v := range l {
+				ml = append(ml, v)
+			}
+		} else {
+			// trim unused fields
+			for _, v := range l {
+				m := make(map[string]interface{})
+				val := reflect.ValueOf(v)
+				for _, fname := range fields {
+					m[fname] = val.FieldByName(fname).Interface()
+				}
+				ml = append(ml, m)
+			}
+		}
+		return ml, num, nil
+	}
+	return nil, 0, err
+}
+
+// Update{{modelName}} updates {{modelName}} by Id and returns error if
+// the record to be updated doesn't exist
+func Update{{modelName}}ById(m *{{modelName}}) (err error) {
+	o := orm.NewOrm()
+	o.Using("write")
+	v := {{modelName}}{Id: m.Id}
+	// ascertain id exists in the database
+	if err = o.Read(&v); err == nil {
+		var num int64
+		if num, err = o.Update(m); err == nil {
+			logs.Info("Number of {{modelName}} updated in database:", num)
+		}
+	}
+	return
+}
+
+// Delete{{modelName}} deletes {{modelName}} by Id and returns error if
+// the record to be deleted doesn't exist
+func Delete{{modelName}}(id int) (err error) {
+	o := orm.NewOrm()
+	o.Using("write")
+	v := {{modelName}}{Id: id}
+	// ascertain id exists in the database
+	if err = o.Read(&v); err == nil {
+		var num int64
+		if num, err = o.Delete(&{{modelName}}{Id: id}); err == nil {
+			logs.Info("Number of {{modelName}} deleted in database:", num)
+		}
+	}
+	return
+}
+`
+
 	CtrlTPL = `package controllers
 
 import (
@@ -1191,7 +1363,7 @@ type DocAdd{{ctrlName}}Request struct {
 // @Param	body	body	controllers.DocAdd{{ctrlName}}Request	true		"json格式添加请求参数"
 // @Success 200 {object} controllers.DocResponse
 // @Failure 403
-// @router /{{ctrlname}}/add [post]
+// @router /add [post]
 func (this *{{ctrlName}}Controller) Add{{ctrlName}}() {
 	var v models.{{ctrlName}}
 	if err := json.Unmarshal(this.Req.Data, &v); err == nil {
@@ -1213,7 +1385,7 @@ func (this *{{ctrlName}}Controller) Add{{ctrlName}}() {
 		}
 		this.Success(nil, "添加成功")
 	} else {
-		this.Error(err, "输入信息解析失败，请稍后重试")
+		this.Error(pe("[%v]参数解析失败[%v]", v, err), "输入信息解析失败，请稍后重试")
 	}
 	return
 }
@@ -1240,7 +1412,7 @@ type Doc{{ctrlName}}ListRequest struct {
 // @Param	body	body	controllers.Doc{{ctrlName}}ListRequest	true		"json格式查询请求参数"
 // @Success 200 {object} []models.{{ctrlName}}
 // @Failure 403
-// @router /{{ctrlname}}/list [post]
+// @router /list [post]
 func (this *{{ctrlName}}Controller) Get{{ctrlName}}List() {
 	var v {{ctrlName}}ListRequest
 	if err := json.Unmarshal(this.Req.Data, &v); err == nil {
@@ -1282,7 +1454,7 @@ func (this *{{ctrlName}}Controller) Get{{ctrlName}}List() {
 
 		this.Success(nil, "查询成功")
 	} else {
-		this.Error(err, "输入信息解析失败，请稍后重试")
+		this.Error(pe("[%v]参数解析失败[%v]", v, err), "输入信息解析失败，请稍后重试")
 	}
 	return
 }
@@ -1299,7 +1471,7 @@ type DocUpdate{{ctrlName}}Request struct {
 // @Param	body	body	controllers.DocUpdate{{ctrlName}}Request	true		"json格式修改请求参数"
 // @Success 200 {object} controllers.DocResponse
 // @Failure 403
-// @router /{{ctrlname}}/update [post]
+// @router /update [post]
 func (this *{{ctrlName}}Controller) Update{{ctrlName}}() {
 	var v models.{{ctrlName}}
 	if err := json.Unmarshal(this.Req.Data, &v); err == nil {
@@ -1321,7 +1493,7 @@ func (this *{{ctrlName}}Controller) Update{{ctrlName}}() {
 		}
 		this.Success(nil, "修改成功")
 	} else {
-		this.Error(err, "输入信息解析失败，请稍后重试")
+		this.Error(pe("[%v]参数解析失败[%v]", v, err), "输入信息解析失败，请稍后重试")
 	}
 	return
 }
@@ -1349,7 +1521,7 @@ func init() {
 }
 `
 	NamespaceTPL = `
-		beego.NSNamespace("/{{nameSpace}}",
+		beego.NSNamespace("/sys/{{nameSpace}}",
 			beego.NSInclude(
 				&controllers.{{ctrlName}}Controller{},
 			),

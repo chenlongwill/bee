@@ -8,6 +8,8 @@ import (
 
 	"github.com/astaxie/beego/orm"
 )
+	
+// Auth         []SysAuth "orm:\"-\"" // 权限
 
 var ps = fmt.Sprintf
 
@@ -19,5 +21,14 @@ func GetUserByAccount(account string) (v *SysUser, err error) {
 		return v, nil
 	}
 	return nil, err
+}
+
+// 更新用户登陆归属地和ip地址和登陆时间
+func UpdateUserIp(v *SysUser) (err error) {
+	o := orm.NewOrm()
+	if _, err = o.Update(v, "LoginIp", "LoginTime", "Platform", "LoginAddr"); err == nil {
+		return nil
+	}
+	return err
 }
 `

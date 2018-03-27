@@ -152,7 +152,6 @@ func (this *BaseController) Prepare() {
 /* =================================移动前端有权限校验请求接口=========================== */
 type OnlineController struct {
 	InitController
-	beego.Controller
 	Req  *Request
 	User *models.SysUser
 }
@@ -599,6 +598,7 @@ import (
 )
 
 var ps = fmt.Sprintf
+var pe = fmt.Errorf
 var runmode string
 var whituser string
 var OrderNum int
@@ -610,55 +610,44 @@ func init() {
 
 // 根据ip去百度接口查询归属地
 type LoginAddr struct {
-	Address string 
+	Address string
 }
 
 // 根据ip去百度接口查询归属地
 type LoginReq struct {
-	Content LoginAddr 
-	Status  int       
-	Message int       
+	Content LoginAddr
+	Status  int
+	Message int
 }
 
 // 平台代号
-type PlatformCode int
-
 const (
-	Android   PlatformCode = 1
-	IOS       PlatformCode = 2
-	PC        PlatformCode = 3
-	MobileWeb PlatformCode = 4
-	PCWeb     PlatformCode = 5
+	Android   int = 1
+	IOS       int = 2
+	PC        int = 3
+	MobileWeb int = 4
+	PCWeb     int = 5
 )
-
-func (s PlatformCode) String() string {
-	switch s {
-	case Android:
-		return "安卓端"
-	case IOS:
-		return "苹果端"
-	case PC:
-		return "电脑端"
-	case MobileWeb:
-		return "微信端"
-	case PCWeb:
-		return "电脑浏览器端"
-	}
-	return ""
-}
 
 // 请求结构体
 type Request struct {
-	Code int    
-	Msg  string 
-	Data []byte 
+	Code int
+	Msg  string
+	Data []byte
 }
 
 // 返回结构体
 type Response struct {
-	Code int         
-	Msg  string      
-	Data interface{} 
+	Code int
+	Msg  string
+	Data interface{}
+}
+
+// 返回结构体
+type DocResponse struct {
+	Code int
+	Msg  string
+	Data string
 }
 
 // 错误代号
@@ -673,8 +662,10 @@ const (
 var api_base_session = `package controllers
 
 import (
+	"fmt"
 	"time"
 
+	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/logs"
 	"github.com/chenlongwill/lib"
 
@@ -706,22 +697,17 @@ func AccountGetUser(account string) *models.SysUser {
 }
 
 // 用户信息变更，更新session，如果sid存在，只更新内容，不存在则不更新session
-func SessionPutUserNoCoverSid(user *models.SysUser) (usercall *models.SysUser) {
-	if user == nil {
-		return
-	}
-	var err error
-	user, err = models.GetUserByAccount(user.Account)
+func SessionPutUserNoCoverSid(account string) (user *models.SysUser, err error) {
+	user, err = models.GetUserByAccount(account)
 	if err != nil {
-		logs.Error("SessionPutUserNoCover 查询用户失败", err)
 		return
 	}
-	// user.Pwd = ""
-	// if user.Zfpwd == "" {
-	// 	user.Zfpwd = "n"
-	// } else {
-	// 	user.Zfpwd = "y"
-	// }
+	user.Pwd = ""
+	if user.Zfpwd == "" {
+		user.Zfpwd = "n"
+	} else {
+		user.Zfpwd = "y"
+	}
 	// user.Openid = ""
 	idcard := []byte(user.Idcard)
 	num := len(user.Idcard)
@@ -730,31 +716,36 @@ func SessionPutUserNoCoverSid(user *models.SysUser) (usercall *models.SysUser) {
 	} else {
 		user.Idcard = ""
 	}
-	var sid string
 	redis := lib.NewRedis("session")
-	if redis.IsExist(user.Account) {
-		sid = redis.GetDefaultString(user.Account)
-		user.Sid = sid
-		usercall = user
-		err = redis.PutStructEx(user.Sid, user, time.Second*43200)
+	tuser := AccountGetUser(account)
+	if tuser != nil {
+		user.Platform = tuser.Platform
+		user.LoginIp = tuser.LoginIp
+		user.LoginAddr = tuser.LoginAddr
+		user.LoginTime = tuser.LoginTime
+		err = redis.PutStructEx(user.Sid, tuser, time.Second*time.Duration(beego.AppConfig.DefaultInt("session_timeout", 43200)))
 		if err != nil {
-			logs.Error("根据sid[%s]account[%s]加入session失败[%v]", user.Sid, user.Account, err)
+			return
+		}
+		err = redis.PutEX(user.Account, user.Sid, time.Second*time.Duration(beego.AppConfig.DefaultInt("session_timeout", 43200)))
+		if err != nil {
 			return
 		}
 	} else {
-		return
+		err = fmt.Errorf("[%s]登录状态已过期", user.Account)
 	}
 	return
 }
 
-// 用户登录校验成功之后，将用户信息存储到session，或者根据sid更新用户信息
-func SessionPutUser(user *models.SysUser) bool {
-	// user.Pwd = ""
-	// if user.Zfpwd == "" {
-	// 	user.Zfpwd = "n"
-	// } else {
-	// 	user.Zfpwd = "y"
-	// }
+// 用户登录校验成功之后，将用户信息存储到session，重新生成sid
+func SessionPutUser(user *models.SysUser) (err error) {
+	user.Sid = lib.GetSid()
+	user.Pwd = ""
+	if user.Zfpwd == "" {
+		user.Zfpwd = "n"
+	} else {
+		user.Zfpwd = "y"
+	}
 	// user.Openid = ""
 	idcard := []byte(user.Idcard)
 	num := len(user.Idcard)
@@ -769,17 +760,17 @@ func SessionPutUser(user *models.SysUser) bool {
 		redis.Delete(redis.GetDefaultString(user.Account))
 		redis.Delete(user.Account)
 	}
-	if user.Sid == "" {
-		user.Sid = lib.GetSid()
-	}
-	err := redis.PutStructEx(user.Sid, user, time.Second*43200)
+	var tmpuser *models.SysUser
+	tmpuser = user
+	err = redis.PutStructEx(user.Sid, tmpuser, time.Second*time.Duration(beego.AppConfig.DefaultInt("session_timeout", 43200)))
 	if err != nil {
-		logs.Error("根据sid[%s]account[%s]加入session失败[%v]", user.Sid, user.Account, err)
-		return false
+		return
 	}
-	redis.PutEX(user.Account, user.Sid, time.Second*43200)
-
-	return true
+	err = redis.PutEX(user.Account, user.Sid, time.Second*time.Duration(beego.AppConfig.DefaultInt("session_timeout", 43200)))
+	if err != nil {
+		return
+	}
+	return
 }
 
 // 根据用户账号，删除用户session信息

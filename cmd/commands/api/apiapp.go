@@ -115,6 +115,11 @@ push_addr = localhost:57172
 static_upload = ~/static
 # 静态文件下载访问地址
 static_down = http://static.{{.Appname}}.com
+
+# 短信通道配置
+vcode_tag = 商城
+vcode_key = xxxx
+vcode_pwd = xxxx
 `
 var apiMaingo = `package main
 
@@ -706,6 +711,9 @@ func createAPI(cmd *commands.Command, args []string) int {
 	configGoContent := strings.Replace(apiconf, "{{.conn}}", generate.SQLConn.String(), -1)
 	utils.WriteToFile(path.Join(appPath, "conf", "app.conf"),
 		strings.Replace(configGoContent, "{{.Appname}}", path.Base(args[0]), -1))
+	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "README.md"), "\x1b[0m")
+	utils.WriteToFile(path.Join(appPath, "README.md"),
+		strings.Replace(api_read_me, "{{.conn}}", generate.SQLConn.String(), -1))
 
 	if generate.SQLConn != "" {
 		fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "main.go"), "\x1b[0m")
@@ -777,6 +785,9 @@ func createAPI(cmd *commands.Command, args []string) int {
 	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "controllers", "base_time.go"), "\x1b[0m")
 	utils.WriteToFile(path.Join(appPath, "controllers", "base_time.go"),
 		strings.Replace(api_base_time, "{{.Appname}}", packPath, -1))
+	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "controllers", "base_user.go"), "\x1b[0m")
+	utils.WriteToFile(path.Join(appPath, "controllers", "base_user.go"),
+		strings.Replace(api_base_user, "{{.Appname}}", packPath, -1))
 	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "models", "var_sys_user.go"), "\x1b[0m")
 	utils.WriteToFile(path.Join(appPath, "models", "var_sys_user.go"),
 		strings.Replace(api_var_sys_user, "{{.Appname}}", packPath, -1))
